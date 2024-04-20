@@ -1,73 +1,87 @@
+# frozen_string_literal: true
+
+require_relative '../blueprints/courses_blueprint'
+
 class CoursesService
-  def initialize(user)
+  attr_reader :user, :params
+
+  def initialize(user, params)
     @user = user
+    @params = params
   end
+
   PAGE = 1
+
   def page
-    @params[:page]&.to_i || PAGE
+    params[:page]&.to_i || PAGE
   end
 
   PER_PAGE_DEF = 10
+
   def per_page
-    @params[:per_page]&.to_i || PER_PAGE_DEF
+    params[:per_page]&.to_i || PER_PAGE_DEF
   end
 
   def limit
-    page
+    per_page
   end
 
   def offset
     (page - 1) * per_page
   end
 
-  def index(params)
-    @params = params
-    if params[:student_id] and params[:tutor_id]
-      courses_with_student = Course.joins(:enrollments).where(enrollments: { user_id: params[:student_id] }).where(user_id: params[:tutor_id]).limit(limit).offset(offset).pluck(:title, :description, :user_id)
-      @courses = courses_with_student.where(user_id: params[:tutor_id]).limit(limit).offset(offset).pluck(:title, :description, :user_id)
-      @courses = @courses.map { |title, description, user_id| { student: User.find(params[:student_id]).fullname, title: title, description: description, creator: User.find(user_id).fullname } }.as_json
-
+  def index
+    if params[:student_id] && params[:tutor_id]
+      @courses = Course.courses_by_teacher_and_student(params[:student_id], params[:tutor_id]).limits(limit, offset)
     elsif params[:tutor_id]
-      @courses = Course.where(user_id: params[:tutor_id]).limit(limit).offset(offset).pluck(:title, :description, :user_id)
-      @courses = @courses.map { |title, description, user_id| { title: title, description: description, creator: User.find(user_id).fullname } }.as_json
+      @courses = Course.courses_by_teacher(params[:tutor_id]).limits(limit, offset)
     elsif params[:student_id]
-      @courses = Course.where(id: Enrollment.where(user_id: params[:student_id]).limit(limit).offset(offset).pluck(:course_id)).pluck(:title, :description, :user_id)
-      @courses = @courses.map { |title, description, user_id| { student: User.find(params[:student_id]).fullname, title: title, description: description, creator: User.find(user_id).fullname } }.as_json
-    elsif not params[:student_id] and not params[:tutor_id]
-      @courses = Course.all.limit(limit).offset(offset).pluck(:title, :description, :user_id)
-      @courses = @courses.map {|title, description, user_id| {title: title, description: description, creator: User.find(user_id).fullname}}.as_json
+      @courses = Course.courses_by_student(params[:student_id]).limits(limit, offset).pluck('title', 'description',
+                                                                                            'user_id')
+      @courses = @courses.map do |title, description, user_id|
+        { student: User.find(params[:student_id]).fullname, title:, description:,
+          creator: User.find(user_id).fullname }.as_json
+      end
+      return @courses
+    else
+      @courses = Course.all.limits(limit, offset)
     end
-    @courses
+    @courses.map do |elem|
+      CoursesBlueprint.render_as_json(elem, fullname: User.find(elem[:user_id])[:fullname])
+    end
   end
 
-  def create_course(token, course_params)
-    return [1, { error: "401 Unauthorised", status: 401}] if token.eql? nil
-    return [1, { error: "401 Unauthorised", status: 401}] if @user.validation_jwt.eql? nil
-    return [1, { error: "403 Forbidden" , status: :forbidden}] unless token[0]["root"].eql? 2
+  def create_course(course_params)
+    return { data: '403 Forbidden', status: :forbidden } unless @user.root.eql? 2
+
     @course = @user.courses.new(title: course_params[:title], description: course_params[:description])
-    return [0, { description: course_params[:description], fullname: @user.fullname}, :ok] if @course.save
-    [1, {error: @course.errors, status: :unprocessable_entity}]
+    return { data: { description: course_params[:description], fullname: @user.fullname }, status: :ok } if @course.save
+
+    { data: @course.errors, status: :unprocessable_entity }
   end
 
-  def subscribe(token, params)
-    return [1, { error: "401 Unauthorised", status: 401}] if token.eql? nil
-    return [1, { error: "401 Unauthorised", status: 401}] if @user.validation_jwt.eql? nil
-    return [1, {error: "403 Forbidden", status: 403}] unless @user.root.eql? 1
+  def subscribe
+    return { data: '403 Forbidden', status: 403 } unless @user.root.eql? 1
+
     course = Course.find_by(id: params[:id])
-    return [1, {error: "Course was not found", status: :unprocessable_entity}] unless course
+    return { data: 'Course was not found', status: :unprocessable_entity } unless course
+
     enrollment = @user.enrollments.create(course_id: params[:id])
-    return [0, :ok] if enrollment.save
-    [1, { error: enrollment.errors, status: :unprocessable_entity}]
+    return { data: {}, status: :ok } if enrollment.save
+
+    { data: enrollment.errors, status: :unprocessable_entity }
   end
 
-  def show(params)
+  def show
     course = Course.find_by(id: params[:id])
     return {} unless course
+
     ids = []
     Enrollment.where(course_id: course.id).each do |enrollment|
       ids.append(enrollment.user_id)
     end
     students = User.where(id: ids)
-    { json: { title: course.title, description: course.description, fullname: User.find(course.user_id).fullname, students: students.pluck(:fullname)}}
+    { json: { title: course.title, description: course.description, fullname: User.find(course.user_id).fullname,
+              students: students.pluck(:fullname) } }
   end
 end
