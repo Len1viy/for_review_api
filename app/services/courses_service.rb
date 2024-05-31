@@ -39,7 +39,7 @@ class CoursesService
       @courses = Course.courses_by_student(params[:student_id]).limits(limit, offset).pluck('title', 'description',
                                                                                             'user_id')
       @courses = @courses.map do |title, description, user_id|
-        { student: User.find(params[:student_id]).fullname, title:, description:,
+        { student: User.find(params[:student_id]).fullname, title: title, description: description,
           creator: User.find(user_id).fullname }.as_json
       end
       return @courses
@@ -47,14 +47,14 @@ class CoursesService
       @courses = Course.all.limits(limit, offset)
     end
     @courses.map do |elem|
-      CoursesBlueprint.render_as_json(elem, fullname: User.find(elem[:user_id])[:fullname])
+      CoursesBlueprint.render_as_json(elem, fullname: User.find(elem[:teacher_id])[:fullname])
     end
   end
 
   def create_course(course_params)
     return { data: '403 Forbidden', status: :forbidden } unless @user.root.eql? 2
 
-    @course = @user.courses.new(title: course_params[:title], description: course_params[:description])
+    @course = @user.teacher_courses.new(title: course_params[:title], description: course_params[:description])
     return { data: { description: course_params[:description], fullname: @user.fullname }, status: :ok } if @course.save
 
     { data: @course.errors, status: :unprocessable_entity }
@@ -81,7 +81,7 @@ class CoursesService
       ids.append(enrollment.user_id)
     end
     students = User.where(id: ids)
-    { json: { title: course.title, description: course.description, fullname: User.find(course.user_id).fullname,
+    { json: { title: course.title, description: course.description, fullname: User.find(course.teacher_id).fullname,
               students: students.pluck(:fullname) } }
   end
 end

@@ -29,7 +29,7 @@ module Api
     end
 
     def destroy
-      validation = ValidationService.run!(request:)
+      validation = ValidationService.run!(request: request)
       result = @service.unauth_user(validation)
       render json: result[:data], status: result[:status]
     end

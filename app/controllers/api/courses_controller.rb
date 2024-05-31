@@ -30,7 +30,7 @@ module Api
     private
 
     def check_user_auth
-      val = ValidationService.run!(request:)
+      val = ValidationService.run!(request:request)
       return unless val
 
       @user = val[:user]
