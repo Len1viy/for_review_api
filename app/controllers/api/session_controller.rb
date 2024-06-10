@@ -5,8 +5,10 @@ require 'bcrypt'
 module Api
   class SessionController < ApplicationController
     before_action :set_user, only: %i[show update destroy]
-    before_action :set_access_control_headers
     before_action :create_service
+
+    
+    
     def index
       render json: @user, status: :ok
     end
@@ -49,8 +51,6 @@ module Api
       params.require(:user).permit(:email, :password)
     end
 
-    def set_access_control_headers
-      headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
-    end
+
   end
 end

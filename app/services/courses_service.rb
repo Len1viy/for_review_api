@@ -36,8 +36,7 @@ class CoursesService
     elsif params[:tutor_id]
       @courses = Course.courses_by_teacher(params[:tutor_id]).limits(limit, offset)
     elsif params[:student_id]
-      @courses = Course.courses_by_student(params[:student_id]).limits(limit, offset).pluck('title', 'description',
-                                                                                            'user_id')
+      @courses = Course.courses_by_student(params[:student_id]).limits(limit, offset)
       @courses = @courses.map do |title, description, user_id|
         { student: User.find(params[:student_id]).fullname, title: title, description: description,
           creator: User.find(user_id).fullname }.as_json

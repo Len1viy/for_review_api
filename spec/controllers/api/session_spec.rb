@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
-require 'bcrypt'
 
 RSpec.describe Api::SessionController, type: :request do
   let!(:user1) do

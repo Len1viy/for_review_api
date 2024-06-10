@@ -4,5 +4,4 @@ class User < ApplicationRecord
   has_many :enrollments
   has_many :student_courses, through: :enrollments, class_name: "User"
   has_many :teacher_courses, foreign_key: :teacher_id, class_name: "Course"
-  scope :find_user, ->(id) { where(id: id) }
 end

@@ -4,11 +4,10 @@ require 'jwt'
 
 class ValidationService < ActiveInteraction::Base
   object :request,
-         class: ActionDispatch::Request
+         class: ActionDispatch::Request, presence: true
 
   def execute
     begin
-      return if request.eql? nil
       return unless request.headers.key?(:Authorization)
 
       token = request.headers['Authorization'][7..]

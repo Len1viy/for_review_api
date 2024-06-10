@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
 include Rails.application.routes.url_helpers
 
 RSpec.describe Api::CoursesController, type: :request do
@@ -215,8 +214,8 @@ RSpec.describe Api::CoursesController, type: :request do
 
     let (:valid_ans) { [] }
     let (:parsed_response) { JSON.parse(response.body) }
-    it do
 
+    it do
       expect(subject).to have_http_status(:ok)
       expect(parsed_response).to eq valid_ans
     end

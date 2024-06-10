@@ -4,7 +4,11 @@ require 'jwt'
 require 'bcrypt'
 
 class SessionService
-  def initialize; end
+
+  attr_reader :params
+  def initialize(params = {})
+    @params = params
+  end
 
   def find_user(params)
     user = User.find_by(email: params[:email])
